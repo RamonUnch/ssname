@@ -34,5 +34,6 @@ If you want to regenerate short names for all files in current directorry.
 Use: `> for /R [/D] %i in (*.*) do ssname.exe "\\.\%i"`
 To make a recursive loop to include all files in sub-dirs.
 Add the `/D` flag to selec folders (dirs).
+Note that with the /R flag the full-path-name is supplied by cmd.exe, so you should add the `\\.\` prefic to the path so that path-names longer than 260 charracters can be used.
 
 The point compared to `fsutil file setshortname <long path> <shortname>` is that short-name is generated automatically.
