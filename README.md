@@ -1,9 +1,10 @@
 # ssname
+# ssname
 Generate and set 8.3 short name automatically for NTFS under Windows, if short name is missing.
 ```
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * SSNAME: Set short name automatically under windows NT (8.3 DOS name)  *
- * Tested under Windows XP and Windows 7.                                *
+ * VERSION 1.1 Tested under Windows XP and Windows 7.                    *
  * Copyright 2021 Raymond GILLIBERT                                      *
  * I wrote this program to re-generate shortnames automatically after    *
  * copying some files under Linux using NTFS-3G.                         *
@@ -15,6 +16,8 @@ Generate and set 8.3 short name automatically for NTFS under Windows, if short n
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *
  * Note that it will start at ~0 and go up to ~ZZ (Base 36)              *
  * This is bad code I wrote in one night with some good drink.....       *
+ * Since 1.1 you no longer need to prefix \\?\ to a path in order to     *
+ * use long-path names (UNC sized up to ~32kB).                          *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - *
  * This file is under the DWTFPL.                                        *
  * DO WHAT THE FUCK YOU WANT WITH THIS SOFTWARE                          *
@@ -31,9 +34,9 @@ This is usefull to be used in a for loop to regenerate all short file names:
 
 If you want to regenerate short names for all files in current directorry.
 
-Use: `> for /R [/D] %i in (*.*) do ssname.exe "\\.\%i"`
+Use: `> for /R [/D] %i in (*.*) do ssname.exe "%i"`
 To make a recursive loop to include all files in sub-dirs.
 Add the `/D` flag to selec folders (dirs).
-Note that with the /R flag the full-path-name is supplied by cmd.exe, so you should add the `\\.\` prefic to the path so that path-names longer than 260 charracters can be used.
+Note that with the /R flag the full-path-name is supplied by cmd.exe.
 
 The point compared to `fsutil file setshortname <long path> <shortname>` is that short-name is generated automatically.
