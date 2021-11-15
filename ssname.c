@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * SSNAME: Set short name automatically under windows NT (8.3 DOS name)  *
- * VERSION 1.1 Tested under Windows XP and Windows 7.                    *
+ * VERSION 1.2 Tested under Windows XP and Windows 7.                    *
  * Copyright 2021 Raymond GILLIBERT                                      *
  * I wrote this program to re-generate shortnames automatically after    *
  * copying some files under Linux using NTFS-3G.                         *
@@ -21,11 +21,11 @@
 
 #include <windows.h>
 #include <stdio.h>
-
+//#include "nanolibc.h"
 /*
 build command line I used (yes I know I am a dummy trying to look cool):
 
-gcc -m32 -march=i386 ssname.c -o ssname.exe -nostdlib -e_unfuckMain@0 -s -Wl,-s,-dynamicbase,-nxcompat,--no-seh,--relax,--disable-runtime-pseudo-reloc,--enable-auto-import,--disable-stdcall-fixup -fno-stack-check -fno-stack-protector -fno-ident -fomit-frame-pointer -mno-stack-arg-probe -m32 -march=i386 -mtune=i686 -mpreferred-stack-boundary=2 -momit-leaf-frame-pointer -fno-exceptions -fno-dwarf2-cfi-asm -fno-asynchronous-unwind-tables -lkernel32 -lmsvcrt -luser32 -ladvapi32 -D__USE_MINGW_ANSI_STDIO=0 -Wall
+gcc -m32 ssname.c -o ssname.exe -march=i386 -mtune=i686 -nostdlib -e_unfuckMain@0 -s -Wl,-s,-dynamicbase,-nxcompat,--no-seh,--relax,--disable-runtime-pseudo-reloc,--enable-auto-import,--disable-stdcall-fixup -fno-stack-check -fno-stack-protector -fno-ident -fomit-frame-pointer -mno-stack-arg-probe -mtune=i686 -mpreferred-stack-boundary=2 -momit-leaf-frame-pointer -fno-exceptions -fno-dwarf2-cfi-asm -fno-asynchronous-unwind-tables -lkernel32 -lmsvcrt -luser32 -ladvapi32 -D__USE_MINGW_ANSI_STDIO=0 -Wall
 
 */
 
@@ -70,8 +70,8 @@ static HRESULT ModifyPrivilege(IN LPCTSTR szPrivilege, IN BOOL fEnable)
 
     // Get the local unique ID for the privilege.
     if ( !LookupPrivilegeValue( NULL, szPrivilege, &luid )) {
-        CloseHandle( hToken );
         printWErr(L"Failed LookupPrivilegeValue", NULL);
+        CloseHandle( hToken );
         return ERROR_FUNCTION_FAILED;
     }
 
@@ -107,7 +107,6 @@ static char *utf16_to_ACP(const wchar_t *input)
     acp = (char*) calloc(BuffSize+16, sizeof(char));
     if (acp) {
         Result = WideCharToMultiByte(CP_ACP, FLAGS, input, -1, acp, BuffSize, "_", &yep);
-
         if ((Result > 0) && (Result <= BuffSize)){
             acp[BuffSize-1]=(char) 0;
             return acp;
@@ -125,7 +124,6 @@ static wchar_t *GetFNinPath(wchar_t *p)
     i++;
     i += (p[i] == '\\' || p[i] == '/');
     return &p[i]; // first char of the filename
-
 }
 ///////////////////////////////////////////////////////////////////////////
 // Removes the trailing file name from a path
@@ -212,7 +210,7 @@ static int FileExistsInPath(const wchar_t *fn, wchar_t *path)
     return ret;
 }
 
-// Note that we could also use '!', '&', '#', '@' '$' ''' '^' '{' '}' '`'
+// Note that we could also use  '~' '!', '&', '#', '@' '$' ''' '^' '{' '}' '`'
 static const char g_mapping[] =  {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' , 'A', 'B'
   , 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J' , 'K', 'L', 'M', 'N'
@@ -238,9 +236,9 @@ static void strntowide(wchar_t *shorty, const char *sfn, size_t len)
 // This is super slow, stupid and bad coding but whatever...
 static int NewShortname(wchar_t *sfn, wchar_t *fnW, wchar_t *path)
 {
-    _wcsupr(fnW); // UPPERCASE!!!
     char *fn = utf16_to_ACP(fnW);
     StripUnCool(fn);
+    _strupr(fn); // Uppercase
 
     int i=0;
     while(fn[++i] != '\0');
@@ -249,7 +247,11 @@ static int NewShortname(wchar_t *sfn, wchar_t *fnW, wchar_t *path)
     int iext = ++i; //File extension
     wchar_t sext[5] = {'.', 0, 0, 0, 0};
     if (iext) {
-        strntowide(&sext[1], &fn[iext], 3);
+        if (fn[iext] == '\0')  {
+            iext = 0; // if extension is empty
+        } else {
+            strntowide(&sext[1], &fn[iext], 3);
+        }
         //printWErr(L"File extension ", sext);
     }
     // if there is a file extension then we stop to the point
@@ -291,47 +293,51 @@ static int NewShortname(wchar_t *sfn, wchar_t *fnW, wchar_t *path)
     // Max possible collisions is 36*36+36 = 1332;
     return 0;
 }
-static wchar_t *GetUNCPath(const wchar_t *FileName)
+static wchar_t *GetUNCPath(const wchar_t *ifn)
 {
-    // Actually for GetFullFileName it is not needed to
+    // Actually for GetFullifn it is not needed to
     // add the funny \\?\ prefix to get the full path name.
     // However we add it in to the buffer for future uses...
     // also we should not add it if it is alrady an UNC
     // and we should prefix with \\?\UNC\ in case of Network path
-    ULONG len = GetFullPathNameW(FileName, 0, 0, 0);
+    ULONG len = GetFullPathNameW(ifn, 0, 0, 0);
     if (len) {
         wchar_t *buf = calloc(len + 16, sizeof(wchar_t));
         if (!buf) return NULL;
         int buffstart;
-        if (FileName[0] == '\\' && FileName[1] == '\\' && FileName[2] == '?') {
-            // Already an UNC...
-            buffstart = 0;
-        } else if (FileName[0] == '\\' && FileName[1] == '\\') {
-            // Network path "\\server\share" style...
-            buf[0] = '\\'; buf[1] = '\\';  buf[2] = '?'; buf[3] = '\\';
-            buf[4] = 'U'; buf[5] = 'N';
-            buffstart = 6;
-        } else if (FileName[2] == '\\' && FileName[3] == '\\') {
-            // Network path "C:\\server\share" style...
-            buf[0] = '\\'; buf[1] = '\\';  buf[2] = '?'; buf[3] = '\\';
-            buf[4] = 'U'; buf[5] = 'N';
-            buffstart = 6;
-            FileName = &FileName[2]; // convert to \\server\share style
+        if (ifn[0] == '\\' && ifn[1] == '\\') {
+            if (ifn[2] == '?') {
+                // Already an UNC...
+                buffstart = 0;
+            } else {
+                // Network path "\\server\share" style...
+                buf[0] = '\\'; buf[1] = '\\';  buf[2] = '?'; buf[3] = '\\';
+                buf[4] = 'U'; buf[5] = 'N';
+                buffstart = 6;
+            }
         } else {
             // Relative or non UNC path.
             buf[0] = '\\'; buf[1] = '\\';  buf[2] = '?'; buf[3] = '\\';
             buffstart = 4;
         }
         // Get the real pathname this time...
-        if (GetFullPathNameW(FileName, len, &buf[buffstart], NULL)) {
-            // if Network path
-            if(buffstart == 6) {
-                buf[6] = 'C'; // "\\?\UNC\server\share" style
+        if (GetFullPathNameW(ifn, len, &buf[buffstart], NULL)) {
+            //printWErr(L"FullPathName=", &buf[buffstart]);
+            if (buffstart == 6) {
+                buf[6] = 'C'; // Network path
+            } else if (buffstart == 4 && buf[4] == '\\' && buf[5] == '\\') {
+                // it was a relative network path, 
+                // so now it is in the \\?\\\server\share format (BAD).
+                // shift the full path two char to the right.
+                int i = wcslen(buf);
+                for (; i > 4; i--) { buf[i+2] = buf[i]; }
+                // Add UNC so that we have \\?\UNC\server\share
+                buf[4] = 'U'; buf[5] = 'N'; buf[6] = 'C';
             }
-//            printWErr(L"FullPathName=", buf);
+            //printWErr(L"UNCPathName=", buf);            
             return buf;
         } else {
-            printWErr(L"Unable to get full path name for ", FileName);
+            printWErr(L"Unable to get full path name for ", ifn);
             free (buf);
         }
     }
@@ -385,7 +391,7 @@ int wmain(int argc, wchar_t **argv)
         wchar_t shorty[14];
         ZeroMemory(shorty, sizeof(shorty));
         if (!NewShortname(shorty, filename, path)) {
-            printWErr(filename, L" Unable to find a new valid shortname!\n");
+            printWErr(filename, L" Unable to find a new valid shortname!");
             ret = 1;
         }
         if (!ret && SetFileShortNameW(hfile, shorty)) {
@@ -408,5 +414,5 @@ int WINAPI unfuckMain(void)
     wchar_t **argv, **Env_;
     __wgetmainargs(&argc, &argv, &Env_,1 , &l);
     hCONSOLE = GetStdHandle(STD_OUTPUT_HANDLE);
-    ExitProcess(wmain(argc, argv));
+    return wmain(argc, argv);
 }
