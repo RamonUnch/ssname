@@ -1,10 +1,9 @@
 # ssname
-# ssname
 Generate and set 8.3 short name automatically for NTFS under Windows, if short name is missing.
 ```
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * SSNAME: Set short name automatically under windows NT (8.3 DOS name)  *
- * VERSION 1.1 Tested under Windows XP and Windows 7.                    *
+ * VERSION 1.2 Tested under Windows XP and Windows 7.                    *
  * Copyright 2021 Raymond GILLIBERT                                      *
  * I wrote this program to re-generate shortnames automatically after    *
  * copying some files under Linux using NTFS-3G.                         *
