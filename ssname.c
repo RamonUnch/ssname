@@ -19,6 +19,9 @@
  * DO WHAT THE FUCK YOU WANT WITH THIS SOFTWARE                          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#define UNICODE
+#define _UNICODE
+
 #include <windows.h>
 #include <stdio.h>
 //#include "nanolibc.h"
@@ -326,7 +329,7 @@ static wchar_t *GetUNCPath(const wchar_t *ifn)
             if (buffstart == 6) {
                 buf[6] = 'C'; // Network path
             } else if (buffstart == 4 && buf[4] == '\\' && buf[5] == '\\') {
-                // it was a relative network path, 
+                // it was a relative network path,
                 // so now it is in the \\?\\\server\share format (BAD).
                 // shift the full path two char to the right.
                 int i = wcslen(buf);
@@ -334,7 +337,7 @@ static wchar_t *GetUNCPath(const wchar_t *ifn)
                 // Add UNC so that we have \\?\UNC\server\share
                 buf[4] = 'U'; buf[5] = 'N'; buf[6] = 'C';
             }
-            //printWErr(L"UNCPathName=", buf);            
+            //printWErr(L"UNCPathName=", buf);
             return buf;
         } else {
             printWErr(L"Unable to get full path name for ", ifn);
